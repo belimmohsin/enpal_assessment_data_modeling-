@@ -31,6 +31,32 @@ clean-targets:         # directories to be removed by `dbt clean`
 # files using the `{{ config(...) }}` macro.
 models:
   enpal_assessment_project:
-    # Config indicated by + and applies to all files under models/example/
-    +schema: pipedrive_analytics
-    +materialized: table
+    # -------------------------------------------------------------
+    # GLOBAL CONFIGS: Applied to all models unless overridden
+    # -------------------------------------------------------------
+    +schema: pipedrive_analytics # Sets the default schema for models in this project
+    +materialized: table # Sets tables as the default materialization
+
+    # -------------------------------------------------------------
+    # LAYER CONFIGURATIONS: Organized by folders
+    # -------------------------------------------------------------
+    
+    staging:
+      # Simple, 1:1 cleanup. Views are cheaper and fresher.
+      +materialized: view
+    
+    intermediate:
+      # Complex, reusable logic (like the stage history). Materialized as a view
+      # or ephemeral saves storage, as analysts won't query it directly.
+      +materialized: view 
+    
+    marts:
+      # Final reporting layer. Must be a table for performance.
+      +materialized: table
+
+seeds:
+  enpal_assessment_project:
+    # Assumeing seeds land in the same schema as the models
+    +quote_columns: false
+    +delimiter: ","
+
