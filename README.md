@@ -57,6 +57,30 @@ Data quality is enforced using a multi-layered testing strategy that ensures cor
 
 ---
 
+### 🛠️ Custom Macros and Governance Logic
+
+This section documents the specific code built to ensure data quality and maintainability, emphasizing **DRY principles** and **scalable testing**.
+
+#### 1. Consistency Macro
+
+This macro standardizes text formatting, which is critical for ensuring clean joins and accurate reporting when unifying data from different sources (Stages, Activity Types, and Metadata JSON).
+
+| Macro | Location | Purpose |
+| :--- | :--- | :--- |
+| **`standardize_text`** | `macros/standardize_text.sql` | **Text Cleaning and Standardization.** Applies functions like `LOWER()`, `TRIM()`, and `INITCAP()` centrally to create clean, consistent labels (e.g., transforming 'qualified lead' to 'Qualified Lead'). This is used across all models feeding the final `kpi_name` column. |
+
+#### 2. Data Integrity Gatekeepers (Singular Tests)
+
+We rely on highly portable **Singular Tests** (raw SQL files) to execute checks that are too resource-intensive or complex for generic macros.
+
+| Test / Check | Location | Purpose |
+| :--- | :--- | :--- |
+| **Source Date Check** | `tests/source_deal_changes_no_future_dates.sql` | **Domain Integrity.** Ensures that the `change_time` in the raw source is not set unreasonably far into the future (e.g., more than 10 days ahead). This catches critical data entry errors that would corrupt trend reports. |
+| **Logic Check** | `tests/int_stage_exit_after_entry.sql` | **Transformation Logic Validation.** A critical check ensuring that for closed deals, the `stage_exit_at` timestamp is always $\ge$ the `stage_enter_at` timestamp. This validates the correctness of the complex $\text{LEAD()}$ window function. |
+| **Incremental PK Check** | `models/marts/marts.yml` | **Scalable Uniqueness.** We use `dbt_utils.unique_combination_of_columns` with a **`WHERE` clause** to run the Primary Key check only on the current and previous month's data. This saves significant compute cost by avoiding full-table scans. |
+---
+
+
 ## 📈 Answering the Business Questions
 
 The final reporting model, `sales_funnel_monthly`, is structured to directly answer the assessment's key performance indicators (KPIs) and required funnel steps by unifying complex metrics.
@@ -70,6 +94,12 @@ The final reporting model, `sales_funnel_monthly`, is structured to directly ans
 | **Step 2.1: Sales Call 1** |`mart_sales_funnel_monthly` |
 | **Total Deals Moving** | `mart_sales_funnel_monthly` |
 | **Conversion Rate (Future)** | Calculated in the BI tool using `(Deals_Entering_Stage_N / Deals_Entering_Stage_{N-1})`. |
+
+* **Code Success Snippets
+![Pipedrive Funnel Model ERD](assets/erd.png)
+![dbt build --target dev](dbt_build/erd.png)
+![Final All Models](final_models/erd.png)
+![Sales Funnel Mart model](sales_funnel_mart/erd.png)
 
 ---
 
