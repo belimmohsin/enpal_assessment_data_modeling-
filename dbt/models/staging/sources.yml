@@ -7,7 +7,7 @@ sources:
       timestamp (e.g., change_time) as a necessary proxy for pipeline freshness,
       as a true ingestion timestamp is not available.
     database: postgres
-    schema: public # Matches the required schema for reading
+    schema: public
     tags: ["source_data", "pipedrive_crm_raw"]
 
     tables:
@@ -15,7 +15,6 @@ sources:
       # 1. EVENT TABLES (High Volume / Needs Freshness Check)
       # ====================================================================
       - name: deal_changes
-        # PROXY FRESHNESS: Using the time the deal last changed as a freshness indicator.
         loaded_at_field: change_time 
         freshness:
           warn_after: {count: 1, period: day}
@@ -36,7 +35,6 @@ sources:
               - not_null
 
       - name: activity
-        # PROXY FRESHNESS: Using the time the activity is due/logged.
         loaded_at_field: due_to 
         freshness:
           warn_after: {count: 1, period: day}
@@ -53,7 +51,6 @@ sources:
               - not_null
 
       - name: users
-        # PROXY FRESHNESS: Using the time the user profile was last modified.
         loaded_at_field: modified 
         freshness:
           warn_after: {count: 7, period: day} # Users change less often
