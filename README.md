@@ -94,13 +94,13 @@ The final reporting model, `sales_funnel_monthly`, is structured to directly ans
 
 ---
 ## **Code Success Snippets
-![dbt build --target dev](dbt_build/erd.png)
+![dbt build --target dev](assets/dbt_build.png)
 
 ---
-![Final All Models](final_models/erd.png)
+![Final All Models](assets/final_models.png)
 
 ---
-![Sales Funnel Mart model](sales_funnel_mart/erd.png)
+![Sales Funnel Mart model](assets/sales_funnel_mart.png)
 
 ---
 
