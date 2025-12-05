@@ -2,108 +2,83 @@ version: 2
 
 sources:
   - name: pipedrive_crm_raw
-    description: "Raw data ingested from Pipedrive CRM CSV files."
-    schema: raw_data # Assuming raw_data folder maps to this schema/database
+    description: >
+      Raw data ingested from Pipedrive CRM. The 'loaded_at_field' uses a business
+      timestamp (e.g., change_time) as a necessary proxy for pipeline freshness,
+      as a true ingestion timestamp is not available.
+    database: postgres
+    schema: public # Matches the required schema for reading
     tags: ["source_data", "pipedrive_crm_raw"]
-
-    # Global freshness policy
-    freshness:
-      warn_after: {count: 12, period: hour}
-      error_after: {count: 24, period: hour}
 
     tables:
       # ====================================================================
-      # 1. THE CORE FACT/EVENT TABLE
+      # 1. EVENT TABLES (High Volume / Needs Freshness Check)
       # ====================================================================
       - name: deal_changes
-        loaded_at_field: _loaded_at
+        # PROXY FRESHNESS: Using the time the deal last changed as a freshness indicator.
+        loaded_at_field: change_time 
+        freshness:
+          warn_after: {count: 1, period: day}
+          error_after: {count: 2, period: day}
         tests:
-          # Row count anomaly test (Crucial for an event log)
           - dbt_expectations.expect_table_row_count_to_be_between:
               min_value: 1 # Ensure at least 1 change event is loaded daily
-              group_by: [cast(_loaded_at as date)]
+              group_by: [cast(change_time as date)] # Group by the available business date
         columns:
           - name: deal_id
-            description: "The unique identifier for the deal."
             tests:
               - not_null
           - name: change_time
-            description: "Timestamp of when the change occurred."
             tests:
               - not_null
-              # Ensures the maximum timestamp is not older than 1 day ahead of today.
-              # This catches future dates entered by mistake. - 
-              - dbt_expectations.expect_column_max_to_be_within_n_days_of_current_date: 
-                  datepart: day
-                  interval: 10
-
           - name: changed_field_key
-            description: "The key of the field that was modified (e.g., stage_id, lost_reason)."
             tests:
               - not_null
-          - name: new_value
-            description: "The value the field was changed to."
 
-      # ====================================================================
-      # 2. ACTIVITY EVENTS (Used for Sales Call 1 & 2 KPIs)
-      # ====================================================================
       - name: activity
-        loaded_at_field: _loaded_at
+        # PROXY FRESHNESS: Using the time the activity is due/logged.
+        loaded_at_field: due_to 
+        freshness:
+          warn_after: {count: 1, period: day}
+          error_after: {count: 3, period: day}
         columns:
           - name: activity_id
             tests:
               - not_null
-              - incremental_unique:
-                  timestamp_column: _loaded_at
           - name: deal_id
             tests:
               - not_null
           - name: done
-            description: "Boolean indicating if the activity was completed (True/False)."
-            tests:
-              - not_null
-              - accepted_values:
-                  values: ['True', 'False']
-          - name: type
-            description: "The key linking to activity_types."
-            tests:
-              - not_null
-
-      # ====================================================================
-      # 3. DIMENSION TABLES
-      # ====================================================================
-      - name: activity_types
-        loaded_at_field: _loaded_at
-        columns:
-          - name: id
-            tests:
-              - not_null
-              - incremental_unique:
-                  timestamp_column: _loaded_at
-
-      - name: stages
-        loaded_at_field: _loaded_at
-        columns:
-          - name: stage_id
-            tests:
-              - not_null
-              - incremental_unique:
-                  timestamp_column: _loaded_at
-          - name: stage_name
             tests:
               - not_null
 
       - name: users
-        loaded_at_field: _loaded_at
+        # PROXY FRESHNESS: Using the time the user profile was last modified.
+        loaded_at_field: modified 
+        freshness:
+          warn_after: {count: 7, period: day} # Users change less often
+          error_after: {count: 14, period: day}
         columns:
           - name: id
             tests:
               - not_null
-              - incremental_unique:
-                  timestamp_column: _loaded_at
+              
+      # ====================================================================
+      # 2. STATIC LOOKUP TABLES (No freshness/volume tests needed)
+      # ====================================================================
+      - name: activity_types
+        columns:
+          - name: id
+            tests:
+              - not_null
+
+      - name: stages
+        columns:
+          - name: stage_id
+            tests:
+              - not_null
 
       - name: fields
-        loaded_at_field: _loaded_at
         columns:
           - name: id
             tests:

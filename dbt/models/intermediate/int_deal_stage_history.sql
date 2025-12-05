@@ -3,8 +3,6 @@ WITH deal_stage_events AS (
     SELECT
         deal_id,
         change_at,
-        -- When field_key is 'stage_id', the new stage ID is in new_value.
-        -- When field_key is 'add_time', stage 0 as it was deal created time as per info in fields table
         CASE 
             WHEN field_key = 'stage_id' THEN CAST(new_value AS BIGINT)
             WHEN field_key = 'add_time' THEN 0 
@@ -19,40 +17,55 @@ WITH deal_stage_events AS (
 ),
 
 staged_changes AS (
-    -- 2. Rank and prepare for LEAD() function
+    -- 2. Identify and remove sequential duplicate stage_ids
     SELECT
         *,
-        ROW_NUMBER() OVER (
+        -- Grab the stage_id from the *previous* chronological row for the same deal
+        LAG(stage_id_changed_to) OVER (
             PARTITION BY deal_id 
             ORDER BY change_at ASC
-        ) AS rn
+        ) AS previous_stage_id
     FROM 
         deal_stage_events
-    WHERE stage_id_changed_to IS NOT NULL -- Exclude rows where we couldn't parse the stage_id
+    WHERE stage_id_changed_to IS NOT NULL
+),
+
+filter_duplicates AS (
+    -- 3. Filter out rows where the stage_id NOT change from the previous row
+    SELECT
+        deal_id,
+        change_at,
+        stage_id_changed_to
+    FROM 
+        staged_changes
+    WHERE
+        -- Only keep the row if the stage_id is different from the previous record
+        stage_id_changed_to IS DISTINCT FROM previous_stage_id
 ),
 
 calculate_exit_time AS (
-    -- 3. Calculate the exit time for the current stage 
+    -- 4. Applying LEAD() function on the clean, distinct timeline
     SELECT
         deal_id,
         stage_id_changed_to AS stage_id,
         change_at AS stage_enter_at,
+        
+        -- Use LEAD() to find the timestamp of the NEXT stage change.
         LEAD(change_at, 1) OVER (
             PARTITION BY deal_id
             ORDER BY change_at ASC
         ) AS stage_exit_at 
         
     FROM 
-        staged_changes
-    -- Remove the initial 'add_time' event (stage_id=0), as it only serves to for the deal created timeline
-    WHERE stage_id_changed_to > 0 
+        filter_duplicates
+    WHERE stage_id_changed_to > 0 -- Remove the initial 'add_time' event (stage_id=0)
 )
 
 SELECT
     deal_id,
     stage_id,
     stage_enter_at,
-    stage_exit_at     --if stage_exit_at is NULL, the deal is currently in this stage.
+    stage_exit_at 
     
 FROM 
     calculate_exit_time

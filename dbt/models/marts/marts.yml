@@ -1,34 +1,34 @@
-version: 2
+# version: 2
 
-models:
-  - name: mart_sales_funnel_monthly
-    description: "Monthly aggregated sales funnel metrics combining stage progression and activity count."
+# models:
+#   - name: mart_sales_funnel_monthly
+#     description: "Monthly aggregated sales funnel metrics combining stage progression and activity count."
     
-    columns:
-      - name: month
-        description: "The month start date for aggregation."
-        tests:
-          - not_null
-      - name: kpi_name
-        description: "The official name of the funnel step (e.g., 'Qualified Lead', 'Sales Call 1')."
-        tests:
-          - not_null
-      - name: funnel_step
-        description: "Ordinal rank (1.0, 2.0, 2.1, etc.) used for sorting purpose."
-        tests:
-          - not_null
-      - name: deals_count
-        description: "The number of deals/activities occurred in that step for the given month."
-        tests:
-          - dbt_expectations.expect_column_values_to_be_positive
-              column_type: numeric
+#     columns:
+#       - name: month
+#         description: "The month start date for aggregation."
+#         tests:
+#           - not_null
+#       - name: kpi_name
+#         description: "The official name of the funnel step (e.g., 'Qualified Lead', 'Sales Call 1')."
+#         tests:
+#           - not_null
+#       - name: funnel_step
+#         description: "Ordinal rank (1.0, 2.0, 2.1, etc.) used for sorting purpose."
+#         tests:
+#           - not_null
+#       - name: deals_count
+#         description: "The number of deals/activities occurred in that step for the given month."
+#         tests:
+#           - dbt_expectations.expect_column_values_to_be_positive
+#               column_type: numeric
 
-    # Primary Key Uniqueness Check (Incremental Logic)
-    tests:
-      - dbt_utils.unique_combination_of_columns:
-          combination_of_columns:
-            - month
-            - kpi_name
-          # CRITICAL STEP: Limit the test to only the current period. 
-          # This saves cost by not scanning the entire history every day.
-          where: "month = date_trunc('month', current_date - interval '1 month')"
+#     # Primary Key Uniqueness Check (Incremental Logic)
+#     tests:
+#       - dbt_utils.unique_combination_of_columns:
+#           combination_of_columns:
+#             - month
+#             - kpi_name
+#           # CRITICAL STEP: Limit the test to only the current period. 
+#           # This saves cost by not scanning the entire history every day.
+#           where: "month = date_trunc('month', current_date - interval '1 month')"

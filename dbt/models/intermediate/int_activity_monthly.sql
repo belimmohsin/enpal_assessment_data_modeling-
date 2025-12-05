@@ -1,5 +1,4 @@
 WITH relevant_activity AS (
-    -- 1. Join activity data with activity types to filter
     SELECT
         t1.activity_id,
         t1.deal_id,
@@ -13,14 +12,11 @@ WITH relevant_activity AS (
         {{ ref('stg_activity_types') }} AS t2
     ON t1.type_key = t2.type_key
     WHERE
-        -- Filter for activities relevant to the funnel steps: Sales Call 1 (meeting) and Sales Call 2 (sc_2)
         t2.type_key IN ('meeting', 'sc_2')
-        -- Only count activities that were completed (is_done is TRUE)
         AND t1.is_done IS TRUE
 ),
 
 monthly_aggregation AS (
-    -- 2. Aggregate completed activities by month and deal
     SELECT
         DATE_TRUNC('month', due_at) AS month_start_date,
         deal_id,
@@ -35,12 +31,16 @@ monthly_aggregation AS (
 SELECT
     month_start_date,
     deal_id,
-    -- final KPI name based on the activity type
-    CASE
-        WHEN type_key = 'meeting' THEN 'Sales Call 1'
-        WHEN type_key = 'sc_2' THEN 'Sales Call 2'
-        ELSE activity_type_name
-    END AS kpi_name,
+    
+    -- APPLY MACRO: Ensure the final kpi_name (derived from the CASE statement) is standardized
+    {{ standardize_text(
+        "CASE 
+            WHEN type_key = 'meeting' THEN 'Sales Call 1'
+            WHEN type_key = 'sc_2' THEN 'Sales Call 2'
+            ELSE activity_type_name
+        END"
+    ) }} AS kpi_name,
+    
     activities_count
 FROM
     monthly_aggregation

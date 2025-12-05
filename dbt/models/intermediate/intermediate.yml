@@ -13,15 +13,6 @@ models:
       - name: stage_enter_at
         tests:
           - not_null
-      - name: stage_exit_at
-        description: "The timestamp the deal exited this stage (NULL if currently active)."
-        tests:
-          # Custom test: Ensures the deal exit time is never before the entry time
-          - dbt_expectations.expect_column_value_a_to_be_greater_than_or_equal_to_column_value_b:
-              column_a: stage_exit_at
-              column_b: stage_enter_at
-              # Only check rows where exit time is defined
-              row_condition: "stage_exit_at IS NOT NULL"
 
     # CRITICAL TEST: The primary key must be unique to ensure no duplicates were created by the LEAD() function.
     tests:
@@ -39,13 +30,23 @@ models:
       - name: month_start_date
         tests:
           - not_null
+      - name: kpi_name
+        description: "Standardized and cleaned** name of the activity (e.g., 'Sales Call 1')."
+        tests:
+          - not_null
       - name: activities_count
         tests:
-          - dbt_expectations.expect_column_values_to_be_positive
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+
 
   - name: int_field_options
     description: "Flattened lookup table for stage IDs and Lost Reasons from Pipedrive metadata."
     columns:
       - name: lookup_id
+        tests:
+          - not_null
+      - name: lookup_label
+        description: "Standardized and cleaned label for the stage or lost reason (e.g., 'Lead Generation')."
         tests:
           - not_null

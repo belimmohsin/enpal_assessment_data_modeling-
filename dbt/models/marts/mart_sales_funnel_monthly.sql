@@ -64,7 +64,7 @@ final_mart AS (
         -- Assign a static order for BI tool sorting (1.0, 2.0, 2.1, etc.)
         CASE 
             WHEN t1.kpi_name = 'Lead Generation' THEN '1.0'
-            WHEN t1.kpi_name = 'Qualified lead' THEN '2.0'
+            WHEN t1.kpi_name = 'Qualified Lead' THEN '2.0'
             WHEN t1.kpi_name = 'Sales Call 1' THEN '2.1'
             WHEN t1.kpi_name = 'Needs Assessment' THEN '3.0'
             WHEN t1.kpi_name = 'Sales Call 2' THEN '3.1'
@@ -72,7 +72,7 @@ final_mart AS (
             WHEN t1.kpi_name = 'Negotiation' THEN '5.0'
             WHEN t1.kpi_name = 'Closing' THEN '6.0'
             WHEN t1.kpi_name = 'Implementation/Onboarding' THEN '7.0'
-            WHEN t1.kpi_name = 'Follow-up/Customer Success' THEN '8.0'
+            WHEN t1.kpi_name = 'Follow-Up/Customer Success' THEN '8.0'
             WHEN t1.kpi_name = 'Renewal/Expansion' THEN '9.0'
             ELSE '99.0'
         END AS funnel_step -- final required column name

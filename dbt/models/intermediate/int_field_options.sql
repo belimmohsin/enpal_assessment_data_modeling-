@@ -1,5 +1,4 @@
 WITH fields_with_options AS (
-    -- 1. Select only the rows that contain the JSON array of options
     SELECT
         field_key,
         field_name,
@@ -11,7 +10,6 @@ WITH fields_with_options AS (
 ),
 
 flattened_options AS (
-    -- 2. Use jsonb_array_elements to unnest the JSON array
     SELECT
         field_key,
         field_name,
@@ -21,16 +19,14 @@ flattened_options AS (
 )
 
 SELECT
-    -- 3. Extract the ID and Label from the unnested JSON object
     field_key,
     field_name,
     
-    -- The option_object looks like: {"id": "1", "label": "Lead Generation"}
-    -- Extract the ID and cast it to BIGINT for consistency
-    CAST(JSON_EXTRACT_PATH_TEXT(option_object, 'id') AS BIGINT) AS lookup_id,
-    JSON_EXTRACT_PATH_TEXT(option_object, 'label') AS lookup_label,
+    CAST((option_object ->> 'id') AS BIGINT) AS lookup_id,
     
-    -- Classify the options for easy joining later
+    -- APPLY MACRO: Standardize the extracted label once here
+    {{ standardize_text('option_object ->> \'label\'') }} AS lookup_label,
+    
     CASE
         WHEN field_key = 'stage_id' THEN 'Funnel Stage'
         WHEN field_key = 'lost_reason' THEN 'Lost Reason'
