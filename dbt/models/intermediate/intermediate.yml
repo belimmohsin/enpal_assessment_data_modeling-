@@ -1,0 +1,51 @@
+version: 2
+
+models:
+  - name: int_deal_stage_history
+    description: "Tracking the entry and exit time for every stage a deal entered. (SCD Type 2 view) "
+    columns:
+      - name: deal_id
+        tests:
+          - not_null
+      - name: stage_id
+        tests:
+          - not_null
+      - name: stage_enter_at
+        tests:
+          - not_null
+      - name: stage_exit_at
+        description: "The timestamp the deal exited this stage (NULL if currently active)."
+        tests:
+          # Custom test: Ensures the deal exit time is never before the entry time
+          - dbt_expectations.expect_column_value_a_to_be_greater_than_or_equal_to_column_value_b:
+              column_a: stage_exit_at
+              column_b: stage_enter_at
+              # Only check rows where exit time is defined
+              row_condition: "stage_exit_at IS NOT NULL"
+
+    # CRITICAL TEST: The primary key must be unique to ensure no duplicates were created by the LEAD() function.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - deal_id
+            - stage_enter_at
+
+  - name: int_activity_monthly
+    description: "Monthly aggregation of completed sales calls and meetings per deal."
+    columns:
+      - name: deal_id
+        tests:
+          - not_null
+      - name: month_start_date
+        tests:
+          - not_null
+      - name: activities_count
+        tests:
+          - dbt_expectations.expect_column_values_to_be_positive
+
+  - name: int_field_options
+    description: "Flattened lookup table for stage IDs and Lost Reasons from Pipedrive metadata."
+    columns:
+      - name: lookup_id
+        tests:
+          - not_null
